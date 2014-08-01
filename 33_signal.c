@@ -78,9 +78,91 @@ void test_sigmask()
 
 }
 
+// 4. 捕捉信号
+// 4.1 内核实现信号捕捉
+// trap into kernel => run hander in user space => back into kernel => schedule another process
+
+int sigaction(int signo, const struct sigaction *act, struct sigaction *oact);
+/*
+struct sigaction {
+    void (*sa_handler)(int signo);    // addr of handler/SIG_IGN/SIG_DFL; 进入函数时signo自动被屏蔽,返回时解除
+    sigset_t sa_mask;           // 额外的信号mask
+    int sa_flags;
+    void (*sa_sigaction)(int, siginfo_t*, void*);
+};
+ */
+
+int pause(void);        // 使进程挂起直至有信号递达; 不处理则不返回,处理了返回-1, errno = EINTR (只有出错的返回值)
+
+void sig_alarm(int signo)
+{
+    // do nothing
+    printf("Alarm Action: %d\n", signo);
+}
+
+unsigned int mysleep(unsigned int nsecs)
+{
+    struct sigaction newact, oldact;
+    unsigned int unslept;
+
+    newact.sa_handler = sig_alarm;
+    sigemptyset(&newact.sa_mask);
+    newact.sa_flags = 0;
+
+    sigaction(SIGALRM, &newact, &oldact);
+
+    alarm(nsecs);
+    pause();        // 无法保证pause在alarm之后的nsecs之内被调用!
+
+    unslept = pause();
+    sigaction(SIGALRM, &oldact, NULL);
+
+    return unslept;
+}
+
+// 不可重入函数: handler与主流程分离, 相当于多控制流, 对全局数据结构修改可能有冲突
+// malloc/free, standard i/o functions
+volatile sig_atomic_t a = 0;
+void test_atomic()
+{
+    while (a != 0);     // wait util a change in sighandler
+}
+
+int sigsuspend(const sigset_t *sigmask);
+
+unsigned int mysleep_refined(unsigned int nsecs)
+{
+    struct sigaction newact, oldact;
+    newact.sa_handler = sig_alarm;
+    sigemptyset(&newact.sa_mask);
+    newact.sa_flags = 0;
+    sigaction(SIGALRM, &newact, &oldact);
+
+    sigset_t newmask, oldmask;
+    sigemptyset(&newmask);
+    sigaddset(&newmask, SIGALRM);
+    sigprocmask(SIG_BLOCK, &newmask, &oldmask);
+
+    alarm(nsecs);
+
+    sigset_t suspmask = oldmask;
+    sigdelset(&suspmask, SIGALRM);
+    sigsuspend(&suspmask);      // 按照suspmask临时设置屏蔽字,然后挂起等待; 处理完成后自动恢复
+
+    int unslept = alarm(0);
+    sigaction(SIGALRM, &oldact, NULL);
+    sigprocmask(SIG_SETMASK, &oldmask, NULL);
+
+    return unslept;
+}
+
+// SIGCHILD信号: 子进程结束时发这个信号给父进程,默认是忽略,实际可以自定义handler来wait子进程;
+// UNIX下父进程对SIGCHILD处理为SIG_IGN时子进程自行清理(这个是自定义忽略,与系统默认忽略不同)
+
 int main(void)
 {
-    test_sigmask();
+    // test_sigmask();
+    mysleep_refined(2);
     return 0;
 }
 
