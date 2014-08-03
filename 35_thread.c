@@ -202,20 +202,78 @@ void test_cond()
     pthread_join(cid, NULL);
 }
 
+// 3.3 信号量
+// 表示可用资源的数量, 可计数版的mutex; 也可以用于不同进程间的同步
+
+#include<semaphore.h>
+
+int sem_init(sem_t *sem, int pshared, unsigned int value);      // pshared = 0表示同一进程内多线程的同步; value表示可用资源的初始数量
+int sem_destroy(sem_t *sem);
+int sem_wait(sem_t *sem);               // 资源数-1, 如果调用前已是0则挂起
+int sem_trywait(sem_t *sem);            // 非阻塞
+int sem_post(sem_t *sem);               // 资源数+1
+
+#define QUEUE_SIZE 5
+int queue[QUEUE_SIZE];
+sem_t blank_number, product_number;
+sem_t sem_lock;
+
+void* sem_producer(void* val)
+{
+    int idx = 0;
+    while (1) {
+        sem_wait(&blank_number);
+        sem_wait(&sem_lock);
+        queue[idx] = rand()%100;
+        printf("Produce Item: %d\n", idx);
+        idx = (idx+1)%QUEUE_SIZE;
+        sem_post(&sem_lock);
+        sem_post(&product_number);
+        sleep(rand()%2);
+    }
+}
+
+void* sem_consumer(void* val)
+{
+    int idx = 0;
+    while (1) {
+        sem_wait(&product_number);
+        sem_wait(&sem_lock);
+        queue[idx] = 0;
+        printf("Consume Item: %d\n", idx);
+        idx = (idx+1)%QUEUE_SIZE;
+        sem_post(&sem_lock);
+        sem_post(&blank_number);
+        sleep(rand()%5);
+    }
+}
+
+void test_sem()
+{
+    sem_init(&sem_lock, 0, 1);
+    sem_init(&blank_number, 0, QUEUE_SIZE);
+    sem_init(&product_number, 0, 0);
+
+    pthread_t pid, cid;
+    pthread_create(&pid, NULL, sem_producer, NULL);
+    pthread_create(&cid, NULL, sem_consumer, NULL);
+    pthread_join(pid, NULL);
+    pthread_join(cid, NULL);
+
+    sem_destroy(&sem_lock);
+    sem_destroy(&blank_number);
+    sem_destroy(&product_number);
+}
 
 int main(void)
 {
     // test_thread();
     // test_join();
     // test_mutex();
-    test_cond();
+    // test_cond();
+    test_sem();
     return 0;
 }
-
-
-
-
-
 
 
 
