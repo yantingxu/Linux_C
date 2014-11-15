@@ -1,0 +1,69 @@
+#启动时不显示欢迎屏幕
+startup_message off
+
+term linux
+#use ^l as the Global Key
+#escape ^b^b
+##屏幕缓冲区设置为4096行
+defscrollback 4096
+
+##在vi或less之类退出时完全恢复到原屏幕内容
+#altscreen off
+
+#自动detach
+autodetach on
+
+#编码
+defutf8 on
+defencoding utf8
+encoding UTF-8 UTF-8
+
+#设置屏幕下方状态栏
+hardstatus on
+hardstatus alwayslastline
+shelltitle "$|bash"
+##状态栏的显示信息定制 
+#hardstatus string '%{= kG}[ %{G}%c:%s %{g}][%= %{= kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][ %{C} %{g}][%{kB} %d/%m %{w}%c %{g}]'
+hardstatus string "%{.bW}%-w%{.rW}%n %t%{-}%+w %=%{..G} %H %{..Y} %m/%d %C%a "
+
+##shutdown the noise（关闭报警响铃）
+vbell off
+
+## 绑定 Ctrl+a-w 为查看所有窗口列表w to show the window list
+bind w windowlist -b
+bind ^w windowlist -b
+
+##initial apps to run
+screen -t GoAgent
+chdir /home/yantingxu/softwares/goagent-goagent-91c5671/local/
+exec /usr/bin/python proxy.py
+
+screen -t Notebook
+chdir /home/yantingxu/
+exec /usr/bin/ipython notebook --pylab inline --profile=nbserver
+
+screen -t MySQL
+exec /usr/bin/mysql -uroot -p123
+
+screen -t Redis
+exec /usr/bin/redis-cli
+
+screen -t Code
+#select 0
+
+#进行快捷键的绑定
+#bindkey -k k1 screen
+#bindkey -k k2 title
+#bindkey -k k3 monitor
+#bindkey -k k4 silence
+#bindkey -k k5 colon
+#bindkey -k k6 split
+#bindkey -k k; focus
+#bindkey -k k7 focus
+#bindkey -k k8 only
+#bindkey -k k9 detach
+bindkey -k F1 prev
+bindkey -k F2 next
+attrcolor u "-u B"
+#sessionname cm
+
